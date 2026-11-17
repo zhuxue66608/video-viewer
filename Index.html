@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#0b0b12" />
+<title>视频观看</title>
+<style>
+  :root{
+    --bg:#0b0b12;
+    --card:rgba(255,255,255,.055);
+    --line:rgba(255,255,255,.11);
+    --txt:#f2f2f7;
+    --dim:#8b8b9a;
+    --acc1:#6d5efc;
+    --acc2:#a855f7;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;}
+  body{
+    margin:0;min-height:100vh;
+    background:
+      radial-gradient(900px 500px at 50% -12%, rgba(109,94,252,.35), transparent 70%),
+      radial-gradient(700px 400px at 100% 100%, rgba(168,85,247,.16), transparent 70%),
+      var(--bg);
+    color:var(--txt);
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  /* ---------- 顶部 ---------- */
+  header{
+    max-width:900px;margin:0 auto;
+    padding:26px 18px 18px;
+    display:flex;align-items:center;justify-content:space-between;gap:12px;
+  }
+  .brand{display:flex;align-items:center;gap:12px;}
+  .logo{
+    width:42px;height:42px;border-radius:13px;flex:none;
+    display:flex;align-items:center;justify-content:center;font-size:20px;
+    background:linear-gradient(135deg,var(--acc1),var(--acc2));
+    box-shadow:0 6px 22px rgba(109,94,252,.45);
+  }
+  h1{margin:0;font-size:19px;font-weight:700;letter-spacing:.5px;}
+  .sub{margin:3px 0 0;font-size:12px;color:var(--dim);}
+  .tools{display:flex;gap:8px;flex:none;}
+  .tools button{
+    width:40px;height:40px;border-radius:12px;border:1px solid var(--line);
+    background:var(--card);color:var(--txt);font-size:17px;line-height:1;
+    cursor:pointer;transition:.2s;
+  }
+  .tools button:active{transform:scale(.92);}
+  .tools button.on{
+    background:linear-gradient(135deg,var(--acc1),var(--acc2));
+    border-color:transparent;box-shadow:0 6px 20px rgba(109,94,252,.5);
+  }
+
+  /* ---------- 卡片区 ---------- */
+  .cards{
+    max-width:900px;margin:0 auto;
+    padding:6px 18px calc(40px + env(safe-area-inset-bottom));
+    display:grid;gap:16px;
+  }
+  @media(min-width:720px){ .cards{grid-template-columns:1fr 1fr;} }
+
+  .card{
+    position:relative;overflow:hidden;
+    padding:34px 20px 26px;
+    border-radius:24px;border:1px solid var(--line);
+    background:linear-gradient(160deg, rgba(255,255,255,.075), rgba(255,255,255,.025));
+    text-align:center;cursor:pointer;
+    transition:transform .18s, border-color .25s, background .25s;
+    user-select:none;
+  }
+  .card::after{
+    content:"";position:absolute;inset:0;border-radius:24px;pointer-events:none;
+    opacity:0;transition:.3s;
+    background:radial-gradient(400px 200px at 50% 0%, rgba(109,94,252,.28), transparent 70%);
+  }
+  .card:active{transform:scale(.975);}
+  .card.has-video{border-color:rgba(109,94,252,.45);}
+  .card.has-video::after{opacity:1;}
+
+  .icon{
+    width:78px;height:78px;margin:0 auto 16px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;font-size:30px;
+    background:rgba(255,255,255,.07);border:1px solid var(--line);
+    transition:.3s;
+  }
+  .card.has-video .icon{
+    background:linear-gradient(135deg,var(--acc1),var(--acc2));
+    border-color:transparent;color:#fff;
+    box-shadow:0 10px 34px rgba(109,94,252,.55);
+    padding-left:4px;
+  }
+  .title{font-size:17px;font-weight:600;margin-bottom:6px;}
+  .status{font-size:13px;color:var(--dim);}
+  .card.has-video .status{color:#b9b2ff;}
+  .meta{
+    display:none;margin-top:10px;font-size:11px;color:#6e6e80;
+    word-break:break-all;line-height:1.5;
+  }
+  body.manage .meta{display:block;}
+
+  /* 管理条 */
+  .manage-bar{display:none;gap:10px;margin-top:18px;justify-content:center;}
+  body.manage .manage-bar{display:flex;}
+  .manage-bar button{
+    flex:1;max-width:140px;padding:10px 12px;border-radius:12px;
+    font-size:13px;font-weight:600;cursor:pointer;transition:.2s;
+    border:1px solid var(--line);background:rgba(255,255,255,.07);color:var(--txt);
+  }
+  .manage-bar button:active{transform:scale(.95);}
+  .manage-bar .upload-btn{
+    background:linear-gradient(135deg,var(--acc1),var(--acc2));
+    border-color:transparent;color:#fff;
+  }
+  .manage-bar .del-btn{color:#ff7a8a;border-color:rgba(255,122,138,.35);}
+  .manage-bar .del-btn:disabled{opacity:.3;cursor:not-allowed;}
+
+  /* ---------- 全屏播放器 ---------- */
+  .player{
+    position:fixed;inset:0;z-index:100;display:none;
+    background:#000;align-items:center;justify-content:center;
+  }
+  .player.show{display:flex;}
+  .player video{width:100%;height:100%;object-fit:contain;background:#000;}
+  .player .close{
+    position:absolute;top:calc(14px + env(safe-area-inset-top));right:14px;
+    width:42px;height:42px;border-radius:50%;border:none;cursor:pointer;
+    background:rgba(255,255,255,.16);color:#fff;font-size:19px;line-height:1;
+    backdrop-filter:blur(8px);
+  }
+
+  /* ---------- 二维码弹窗 ---------- */
+  .modal{
+    position:fixed;inset:0;z-index:200;display:none;
+    align-items:center;justify-content:center;padding:22px;
+    background:rgba(0,0,0,.72);backdrop-filter:blur(6px);
+  }
+  .modal.show{display:flex;}
+  .modal .box{
+    width:100%;max-width:340px;background:#fff;color:#111;
+    border-radius:22px;padding:24px 22px;text-align:center;
+  }
+  .modal h3{margin:0 0 16px;font-size:16px;}
+  .modal canvas,.modal img{
+    width:220px;height:220px;border-radius:12px;display:none;
+    background:#f4f4f6;margin:0 auto;
+  }
+  .modal .url{
+    font-size:11px;color:#666;word-break:break-all;
+    margin:14px 0 4px;line-height:1.5;
+  }
+  .modal .hint{font-size:11px;color:#999;margin:6px 0 18px;line-height:1.6;}
+  .modal .ok{
+    width:100%;padding:12px;border-radius:12px;border:none;cursor:pointer;
+    background:#111;color:#fff;font-size:14px;font-weight:600;
+  }
+
+  /* ---------- 提示 ---------- */
+  .notice{
+    max-width:900px;margin:0 auto 18px;padding:0 18px;
+    font-size:12px;color:#7a7a8c;line-height:1.7;
+  }
+  .notice b{color:#ffb86b;font-weight:600;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <div class="logo">🎬</div>
+    <div>
+      <h1>视频观看</h1>
+      <p class="sub" id="subText">点击下方按钮观看视频</p>
+    </div>
+  </div>
+  <div class="tools">
+    <button id="qrBtn" title="生成二维码">📱</button>
+    <button id="gearBtn" title="管理模式">⚙️</button>
+  </div>
+</header>
+
+<main class="cards" id="cards">
+  <!-- 视频一 -->
+  <div class="card" data-key="video1">
+    <div class="icon">🎬</div>
+    <div class="title">视频一</div>
+    <div class="status">暂无视频</div>
+    <div class="meta"></div>
+    <div class="manage-bar">
+      <button class="upload-btn" data-key="video1">上传 / 更换</button>
+      <button class="del-btn" data-key="video1" disabled>删除</button>
+    </div>
+  </div>
+  <!-- 视频二 -->
+  <div class="card" data-key="video2">
+    <div class="icon">🎬</div>
+    <div class="title">视频二</div>
+    <div class="status">暂无视频</div>
+    <div class="meta"></div>
+    <div class="manage-bar">
+      <button class="upload-btn" data-key="video2">上传 / 更换</button>
+      <button class="del-btn" data-key="video2" disabled>删除</button>
+    </div>
+  </div>
+</main>
+
+<div class="notice" id="notice" style="display:none">
+  <b>提示：</b>当前是本地文件方式打开，视频只会保存在这台设备上。
+  请把此页面放到网站服务器 / GitHub Pages / Vercel 后再用手机扫码。
+</div>
+
+<!-- 全屏播放器 -->
+<div class="player" id="player">
+  <video id="videoEl" controls playsinline preload="metadata"></video>
+  <button class="close" id="closePlayer">✕</button>
+</div>
+
+<!-- 二维码弹窗 -->
+<div class="modal" id="qrModal">
+  <div class="box">
+    <h3>扫码观看</h3>
+    <canvas id="qrCanvas"></canvas>
+    <img id="qrImg" alt="二维码" />
+    <p class="url" id="qrUrl"></p>
+    <p class="hint">手机扫码即可打开此页面</p>
+    <button class="ok" id="qrClose">关闭</button>
+  </div>
+</div>
+
+<input type="file" id="fileInput" accept="video/*" hidden />
+
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+<script>
+/* =====================================================
+   1. IndexedDB 简易封装（存视频 Blob）
+   ===================================================== */
+const DB_NAME = 'videoWallDB';
+const STORE   = 'videos';
+let _db = null;
+
+function getDB(){
+  if (_db) return Promise.resolve(_db);
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, 1);
+    req.onupgradeneeded = () => {
+      const d = req.result;
+      if (!d.objectStoreNames.contains(STORE)) d.createObjectStore(STORE);
+    };
+    req.onsuccess = () => { _db = req.result; resolve(_db); };
+    req.onerror   = () => reject(req.error);
+  });
+}
+async function dbPut(key, val){
+  const d = await getDB();
+  return new Promise((res, rej) => {
+    const tx = d.transaction(STORE, 'readwrite');
+    tx.objectStore(STORE).put(val, key);
+    tx.oncomplete = () => res();
+    tx.onerror = tx.onabort = () => rej(tx.error);
+  });
+}
+async function dbGet(key){
+  const d = await getDB();
+  return new Promise((res, rej) => {
+    const tx = d.transaction(STORE, 'readonly');
+    const r = tx.objectStore(STORE).get(key);
+    r.onsuccess = () => res(r.result || null);
+    r.onerror   = () => rej(r.error);
+  });
+}
+async function dbDel(key){
+  const d = await getDB();
+  return new Promise((res, rej) => {
+    const tx = d.transaction(STORE, 'readwrite');
+    tx.objectStore(STORE).delete(key);
+    tx.oncomplete = () => res();
+    tx.onerror = tx.onabort = () => rej(tx.error);
+  });
+}
+
+/* =====================================================
+   2. 状态与渲染
+   ===================================================== */
+const KEYS  = ['video1', 'video2'];
+const state = { video1: null, video2: null };
+let manageMode = false;
+
+const $ = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
+
+function fmtSize(n){
+  if (!n) return '';
+  if (n > 1073741824) return (n / 1073741824).toFixed(2) + ' GB';
+  if (n > 1048576)    return (n / 1048576).toFixed(1) + ' MB';
+  return Math.round(n / 1024) + ' KB';
+}
+
+function render(){
+  $$('.card').forEach(card => {
+    const key    = card.dataset.key;
+    const rec    = state[key];
+    const icon   = card.querySelector('.icon');
+    const status = card.querySelector('.status');
+    const meta   = card.querySelector('.meta');
+    const delBtn = card.querySelector('.del-btn');
+
+    if (rec){
+      card.classList.add('has-video');
+      icon.textContent   = '▶';
+      status.textContent = '点击观看';
+      meta.textContent   = `${rec.name} · ${fmtSize(rec.size)}`;
+      delBtn.disabled    = false;
+    } else {
+      card.classList.remove('has-video');
+      icon.textContent   = '🎬';
+      status.textContent = '暂无视频';
+      meta.textContent   = '';
+      delBtn.disabled    = true;
+    }
+  });
+}
+
+/* =====================================================
+   3. 初始化：读取已保存的视频
+   ===================================================== */
+(async function init(){
+  if (location.protocol === 'file:'){
+    $('#notice').style.display = 'block';
+  }
+  for (const k of KEYS){
+    try { state[k] = await dbGet(k); }
+    catch(e){ console.warn('读取失败', k, e); }
+  }
+  render();
+})();
+
+/* =====================================================
+   4. 播放
+   ===================================================== */
+const player  = $('#player');
+const videoEl = $('#videoEl');
+let curURL = null;
+
+function playVideo(key){
+  const rec = state[key];
+  if (!rec || !rec.blob) return;
+  releaseURL();
+  curURL = URL.createObjectURL(rec.blob);
+  videoEl.src = curURL;
+  player.classList.add('show');
+  videoEl.play().catch(() => {});
+}
+
+function releaseURL(){
+  if (curURL){ URL.revokeObjectURL(curURL); curURL = null; }
+}
+
+function closePlayer(){
+  videoEl.pause();
+  videoEl.removeAttribute('src');
+  videoEl.load();
+  player.classList.remove('show');
+  releaseURL();
+}
+
+$('#closePlayer').addEventListener('click', closePlayer);
+
+/* =====================================================
+   5. 上传 / 删除
+   ===================================================== */
+const fileInput = $('#fileInput');
+let pendingKey = null;
+
+$$('.upload-btn').forEach(btn => {
+  btn.addEventListener('click', e => {
+    e.stopPropagation();
+    pendingKey = btn.dataset.key;
+    fileInput.value = '';
+    fileInput.click();
+  });
+});
+
+fileInput.addEventListener('change', async () => {
+  const file = fileInput.files && fileInput.files[0];
+  if (!file || !pendingKey) return;
+
+  if (!file.type.startsWith('video/')){
+    alert('请选择视频文件');
+    return;
+  }
+
+  const btn = document.querySelector(`.upload-btn[data-key="${pendingKey}"]`);
+  const old = btn.textContent;
+  btn.textContent = '保存中…';
+  btn.disabled = true;
+
+  const rec = {
+    blob: file,            // File 本身是 Blob，直接存
+    name: file.name,
+    type: file.type,
+    size: file.size,
+    time: Date.now()
+  };
+
+  try {
+    await dbPut(pendingKey, rec);
+    state[pendingKey] = rec;
+    render();
+  } catch (err){
+    console.error(err);
+    alert('保存失败：' + (err && err.message ? err.message : '存储空间不足或浏览器不支持') +
+          '\n建议改用较小的视频（如 100MB 以内的 mp4）。');
+  } finally {
+    btn.textContent = old;
+    btn.disabled = false;
+    pendingKey = null;
+  }
+});
+
+$$('.del-btn').forEach(btn => {
+  btn.addEventListener('click', async e => {
+    e.stopPropagation();
+    const key = btn.dataset.key;
+    if (!state[key]) return;
+    if (!confirm('确定删除这个视频吗？')) return;
+    try {
+      await dbDel(key);
+      state[key] = null;
+      render();
+    } catch (err){
+      alert('删除失败：' + err.message);
+    }
+  });
+});
+
+/* =====================================================
+   6. 卡片点击 / 管理模式
+   ===================================================== */
+$$('.card').forEach(card => {
+  card.addEventListener('click', () => {
+    if (manageMode) return;
+    const key = card.dataset.key;
+    if (!state[key]){
+      // 没有视频时，给出轻提示
+      card.animate(
+        [{transform:'translateX(0)'},{transform:'translateX(-6px)'},
+         {transform:'translateX(6px)'},{transform:'translateX(0)'}],
+        {duration:280}
+      );
+      return;
+    }
+    playVideo(key);
+  });
+});
+
+const gearBtn = $('#gearBtn');
+gearBtn.addEventListener('click', () => {
+  manageMode = !manageMode;
+  document.body.classList.toggle('manage', manageMode);
+  gearBtn.classList.toggle('on', manageMode);
+  $('#subText').textContent = manageMode
+    ? '管理模式：可上传或删除视频'
+    : '点击下方按钮观看视频';
+});
+
+/* =====================================================
+   7. 二维码
+   ===================================================== */
+const qrModal = $('#qrModal');
+
+$('#qrBtn').addEventListener('click', async () => {
+  const url = location.href.split('#')[0];
+  $('#qrUrl').textContent = url;
+
+  const canvas = $('#qrCanvas');
+  const img    = $('#qrImg');
+  canvas.style.display = 'none';
+  img.style.display    = 'none';
+  qrModal.classList.add('show');
+
+  if (window.QRCode){
+    try {
+      await QRCode.toCanvas(canvas, url, {
+        width: 220, margin: 1,
+        color: { dark: '#111111', light: '#ffffff' }
+      });
+      canvas.style.display = 'block';
+      return;
+    } catch (e){ console.warn('本地生成二维码失败', e); }
+  }
+  // 降级：使用在线接口
+  img.src = 'https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=' +
+            encodeURIComponent(url);
+  img.style.display = 'block';
+});
+
+$('#qrClose').addEventListener('click', () => qrModal.classList.remove('show'));
+qrModal.addEventListener('click', e => {
+  if (e.target === qrModal) qrModal.classList.remove('show');
+});
+
+/* 页面隐藏时暂停播放，防止后台耗电 */
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden && player.classList.contains('show')) videoEl.pause();
+});
+</script>
+</body>
+</html>
